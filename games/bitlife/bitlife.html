@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MiniLife — Browser Life Sim</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app" class="mobile-container">
+    <!-- Left Stats -->
+    <aside class="panel stats-panel">
+      <h2>Stats</h2>
+      <div class="stat"><label>Age</label><div id="stat-age">0</div></div>
+      <div class="stat"><label>Happiness</label><div id="stat-happiness">50</div></div>
+      <div class="stat"><label>Health</label><div id="stat-health">50</div></div>
+      <div class="stat"><label>Smarts</label><div id="stat-smarts">50</div></div>
+      <div class="stat"><label>Looks</label><div id="stat-looks">50</div></div>
+      <div class="stat"><label>Money</label><div id="stat-money">$0</div></div>
+      <hr>
+      <div class="save-controls">
+        <button id="btn-save">Save</button>
+        <button id="btn-load">Load</button>
+        <button id="btn-export">Export</button>
+        <input id="import-file" type="file" accept="application/json" style="display:none">
+        <button id="btn-import">Import</button>
+      </div>
+    </aside>
+
+    <!-- Center Life Log -->
+    <main class="panel main-panel">
+      <header class="main-header">
+        <div class="title">MiniLife</div>
+        <div class="subtitle" id="subtitle">You were born.</div>
+      </header>
+
+      <section id="log" class="life-log" aria-live="polite"></section>
+
+      <div class="controls">
+        <button class="primary" id="btn-age">Age Up</button>
+        <button id="btn-activities">Activities</button>
+        <button id="btn-work">Work</button>
+        <button id="btn-relationship">Relationships</button>
+      </div>
+    </main>
+
+    <!-- Right / Bottom Icon bar (mobile bottom) -->
+    <nav class="panel nav-panel">
+      <button class="nav-btn" data-tab="life">Life</button>
+      <button class="nav-btn" data-tab="jobs">Jobs</button>
+      <button class="nav-btn" data-tab="achieve">Achievements</button>
+      <button class="nav-btn" data-tab="settings">Settings</button>
+    </nav>
+  </div>
+
+  <!-- Modal template -->
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <button id="modal-close" class="modal-close" aria-label="Close">&times;</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
