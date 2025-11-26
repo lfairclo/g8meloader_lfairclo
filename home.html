@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Mini Browser</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    #viewer-container {
+      width: 100%;
+      height: 70vh;
+      border: 1px solid #ccc;
+      margin-top: 20px;
+      position: relative;
+    }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    #fullscreenBtn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 6px 12px;
+      background: #333;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Embedded Website Viewer</h1>
+  <input id="urlInput" type="text" placeholder="Enter a URL (https://...)" style="width: 70%;">
+  <button onclick="loadSite()">Load</button>
+
+  <div id="viewer-container">
+    <button id="fullscreenBtn" onclick="goFullscreen()">Fullscreen</button>
+    <iframe id="viewer" src=""></iframe>
+  </div>
+
+  <script>
+    function loadSite() {
+      let url = document.getElementById("urlInput").value;
+      if (!url.startsWith("http://") && !url.startsWith("https://")) {
+        url = "https://" + url;
+      }
+      document.getElementById("viewer").src = url;
+    }
+
+    function goFullscreen() {
+      const elem = document.getElementById("viewer-container");
+      if (elem.requestFullscreen) elem.requestFullscreen();
+      else if (elem.mozRequestFullScreen) elem.mozRequestFullScreen();
+      else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+      else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+    }
+  </script>
+
+</body>
+</html>
