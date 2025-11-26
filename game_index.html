@@ -60,7 +60,7 @@ function showResults(list) {
     const item = document.createElement("div");
     item.textContent = game;
     item.onclick = () => {
-      window.location.href = `/games/${game}/${game}`;
+      window.location.href = `/games/${game}/${game}.html`;
     };
     container.appendChild(item);
   });
