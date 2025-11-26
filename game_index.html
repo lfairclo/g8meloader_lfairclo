@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Game Search</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+    }
+    input {
+      width: 300px;
+      padding: 10px;
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+    #results div {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    #results div:hover {
+      background-color: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Search Games</h1>
+<input id="searchBox" type="text" placeholder="Type a game name...">
+
+<div id="results"></div>
+
+<script>
+// Load game list
+let games = [];
+
+fetch("games.json")
+  .then(response => response.json())
+  .then(data => {
+    games = data;
+    showResults(games);
+  });
+
+// Filter as user types
+document.getElementById("searchBox").addEventListener("input", function () {
+  const query = this.value.toLowerCase();
+  const filtered = games.filter(game => game.toLowerCase().includes(query));
+  showResults(filtered);
+});
+
+// Display list
+function showResults(list) {
+  const container = document.getElementById("results");
+  container.innerHTML = "";
+
+  list.forEach(game => {
+    const item = document.createElement("div");
+    item.textContent = game;
+    item.onclick = () => {
+      window.location.href = `/games/${game}`;
+    };
+    container.appendChild(item);
+  });
+}
+</script>
+
+</body>
+</html>
