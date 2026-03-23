@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Private P2P Stream Portal</title>
+    <style>
+        body { font-family: sans-serif; background: #1a1a1a; color: white; text-align: center; padding: 20px; }
+        video { width: 80%; max-width: 600px; border: 2px solid #444; border-radius: 8px; background: black; }
+        .controls { margin: 20px; padding: 20px; background: #333; border-radius: 10px; display: inline-block; }
+        button { padding: 10px 20px; cursor: pointer; font-weight: bold; margin: 5px; }
+        input { padding: 10px; margin: 5px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <h2>Local Network Stream Portal</h2>
+
+    <div id="login-section" class="controls">
+        <input type="password" id="room-pass" placeholder="Enter Room Password">
+        <button onclick="enterRoom()">Enter Room</button>
+    </div>
+
+    <div id="stream-section" class="hidden">
+        <p>Room: <span id="room-display"></span></p>
+        <video id="mainVideo" autoplay playsinline></video>
+        
+        <div class="controls">
+            <h3>Broadcast Controls</h3>
+            <button onclick="startCamera()">Use My Camera</button>
+            <input type="file" id="fileInput" accept="video/*" style="display:none" onchange="startFile(this)">
+            <button onclick="document.getElementById('fileInput').click()">Upload/Loop Video</button>
+        </div>
+    </div>
+
+    <script>
+        let localStream;
+        const videoElement = document.getElementById('mainVideo');
+
+        function enterRoom() {
+            const pass = document.getElementById('room-pass').value;
+            if(!pass) return alert("Enter a password!");
+            
+            document.getElementById('room-display').innerText = pass;
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('stream-section').classList.remove('hidden');
+            
+            // In a real app, this 'pass' would connect to a signaling server.
+            // Since your network blocks them, this UI prepares the hooks for P2P.
+            console.log("Joined Room: " + pass);
+        }
+
+        async function startCamera() {
+            if (localStream) localStream.getTracks().forEach(track => track.stop());
+            
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                videoElement.srcObject = localStream;
+                videoElement.loop = false;
+            } catch (err) {
+                alert("Camera access denied or not found.");
+            }
+        }
+
+        function startFile(input) {
+            if (localStream) localStream.getTracks().forEach(track => track.stop());
+            
+            const file = input.files[0];
+            const url = URL.createObjectURL(file);
+            
+            videoElement.srcObject = null;
+            videoElement.src = url;
+            videoElement.loop = true;
+            videoElement.play();
+        }
+    </script>
+</body>
+</html>
