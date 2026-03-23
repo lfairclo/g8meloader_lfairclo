@@ -1,91 +1,117 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Manual P2P Tunnel</title>
+    <title>P2P Stream Portal</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #e0e0e0; text-align: center; padding: 20px; }
-        .container { max-width: 800px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        video { width: 100%; border-radius: 8px; background: #000; margin-top: 15px; }
-        textarea { width: 90%; height: 60px; background: #2d2d2d; color: #00ff00; border: 1px solid #444; font-family: monospace; font-size: 10px; margin: 5px 0; }
-        button { background: #3d5afe; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; transition: 0.3s; }
-        button:hover { background: #536dfe; }
-        .step { border-left: 3px solid #3d5afe; padding-left: 15px; margin: 20px 0; text-align: left; }
+        body { font-family: sans-serif; background: #121212; color: white; text-align: center; padding: 20px; }
+        .box { background: #222; padding: 20px; border-radius: 10px; max-width: 600px; margin: auto; border: 1px solid #333; }
+        video { width: 100%; border-radius: 5px; margin: 10px 0; background: #000; }
+        textarea { width: 100%; height: 80px; font-family: monospace; font-size: 10px; margin: 10px 0; block-size: border-box; }
+        .status { color: #00ff00; font-size: 12px; margin: 10px; font-style: italic; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; background: #2563eb; color: white; border: none; border-radius: 5px; }
+        button:hover { background: #1d4ed8; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>Secure Local Stream</h2>
-    
-    <div class="step">
-        <strong>1. Choose Source:</strong><br>
-        <button onclick="startSource('cam')">Use Camera</button>
-        <button onclick="document.getElementById('fileInput').click()">Loop Video File</button>
-        <input type="file" id="fileInput" accept="video/*" style="display:none" onchange="startSource('file')">
-    </div>
-
+<div class="box">
+    <h3>1. Prepare Media</h3>
+    <button onclick="setup('cam')">Use Camera</button>
+    <button onclick="document.getElementById('fileIn').click()">Loop Video File</button>
+    <input type="file" id="fileIn" accept="video/*" style="display:none" onchange="setup('file')">
     <video id="v" autoplay playsinline controls></video>
+    <div id="status" class="status">Waiting for media...</div>
 
-    <div class="step">
-        <strong>2. Create Connection:</strong><br>
-        <button onclick="createOffer()">I am Starting the Stream</button>
-        <button onclick="createAnswer()">I am Joining the Stream</button>
-    </div>
+    <hr>
 
-    <div id="handshake">
-        <p>Copy this code to your friend:</p>
-        <textarea id="localSdp" readonly placeholder="Your code will appear here..."></textarea>
-        
-        <p>Paste your friend's code here:</p>
-        <textarea id="remoteSdp" placeholder="Paste their code here..."></textarea>
-        <br>
-        <button onclick="connect()">Connect & Start Video</button>
-    </div>
+    <h3>2. Connect</h3>
+    <p style="font-size: 12px;">Sender: Click Start. Give code to Friend.<br>
+       Friend: Paste code, Click Join. Give code back to Sender.</p>
+    
+    <button onclick="startOffer()">[Sender] Start Stream</button>
+    <button onclick="startAnswer()">[Friend] Join Stream</button>
+
+    <textarea id="outputSdp" readonly placeholder="Your generated code will appear here..."></textarea>
+    <textarea id="inputSdp" placeholder="Paste your friend's code here..."></textarea>
+    
+    <button id="finalBtn" onclick="finish()" style="background:#059669; display:none;">Finish Connection</button>
 </div>
 
 <script>
-let pc = new RTCPeerConnection({ iceServers: [] }); // Local only, no external servers
-let localStream;
+let pc = new RTCPeerConnection({ iceServers: [] });
+let log = document.getElementById('status');
 
-// Setup video source
-async function startSource(type) {
+function setStatus(msg) { log.innerText = "Status: " + msg; }
+
+// 1. Setup Media
+async function setup(type) {
+    let stream;
     if (type === 'cam') {
-        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        document.getElementById('v').srcObject = localStream;
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById('v').srcObject = stream;
     } else {
-        const file = document.getElementById('fileInput').files[0];
-        document.getElementById('v').srcObject = null;
-        document.getElementById('v').src = URL.createObjectURL(file);
-        document.getElementById('v').loop = true;
-        localStream = document.getElementById('v').captureStream();
+        const file = document.getElementById('fileIn').files[0];
+        const v = document.getElementById('v');
+        v.srcObject = null;
+        v.src = URL.createObjectURL(file);
+        v.loop = true;
+        v.play();
+        stream = v.captureStream();
     }
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+    stream.getTracks().forEach(track => pc.addTrack(track, stream));
+    setStatus("Media Ready. Choose 'Start' or 'Join'.");
 }
 
-// Receive video
-pc.ontrack = (e) => { document.getElementById('v').srcObject = e.streams[0]; };
-
-async function createOffer() {
+// 2. Sender: Create Offer
+async function startOffer() {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    // Wait for ICE gathering
-    setTimeout(() => { document.getElementById('localSdp').value = btoa(JSON.stringify(pc.localDescription)); }, 500);
+    
+    // Wait for address gathering
+    pc.onicecandidate = (e) => {
+        if (!e.candidate) {
+            document.getElementById('outputSdp').value = btoa(JSON.stringify(pc.localDescription));
+            setStatus("Copy your code and give it to your friend.");
+            document.getElementById('finalBtn').style.display = "inline-block";
+        }
+    };
 }
 
-async function createAnswer() {
-    const remoteData = JSON.parse(atob(document.getElementById('remoteSdp').value));
-    await pc.setRemoteDescription(new RTCSessionDescription(remoteData));
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    setTimeout(() => { document.getElementById('localSdp').value = btoa(JSON.stringify(pc.localDescription)); }, 500);
-}
+// 3. Friend: Create Answer
+async function startAnswer() {
+    const raw = document.getElementById('inputSdp').value;
+    if (!raw) return alert("Paste the sender's code first!");
+    
+    try {
+        const offer = JSON.parse(atob(raw));
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
 
-async function connect() {
-    const remoteData = JSON.parse(atob(document.getElementById('remoteSdp').value));
-    if (!pc.currentRemoteDescription) {
-        await pc.setRemoteDescription(new RTCSessionDescription(remoteData));
+        pc.onicecandidate = (e) => {
+            if (!e.candidate) {
+                document.getElementById('outputSdp').value = btoa(JSON.stringify(pc.localDescription));
+                setStatus("Copy this code and give it BACK to the Sender.");
+            }
+        };
+    } catch (e) {
+        alert("Invalid code. Make sure you copied the whole thing!");
     }
 }
+
+// 4. Sender: Finalize
+async function finish() {
+    const raw = document.getElementById('inputSdp').value;
+    const answer = JSON.parse(atob(raw));
+    await pc.setRemoteDescription(new RTCSessionDescription(answer));
+    setStatus("Connected!");
+}
+
+// Handle incoming stream
+pc.ontrack = (e) => {
+    setStatus("Receiving Video!");
+    document.getElementById('v').srcObject = e.streams[0];
+};
 </script>
 </body>
 </html>
