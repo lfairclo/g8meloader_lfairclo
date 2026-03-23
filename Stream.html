@@ -1,77 +1,91 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Private P2P Stream Portal</title>
+    <title>Manual P2P Tunnel</title>
     <style>
-        body { font-family: sans-serif; background: #1a1a1a; color: white; text-align: center; padding: 20px; }
-        video { width: 80%; max-width: 600px; border: 2px solid #444; border-radius: 8px; background: black; }
-        .controls { margin: 20px; padding: 20px; background: #333; border-radius: 10px; display: inline-block; }
-        button { padding: 10px 20px; cursor: pointer; font-weight: bold; margin: 5px; }
-        input { padding: 10px; margin: 5px; }
-        .hidden { display: none; }
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #e0e0e0; text-align: center; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        video { width: 100%; border-radius: 8px; background: #000; margin-top: 15px; }
+        textarea { width: 90%; height: 60px; background: #2d2d2d; color: #00ff00; border: 1px solid #444; font-family: monospace; font-size: 10px; margin: 5px 0; }
+        button { background: #3d5afe; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; transition: 0.3s; }
+        button:hover { background: #536dfe; }
+        .step { border-left: 3px solid #3d5afe; padding-left: 15px; margin: 20px 0; text-align: left; }
     </style>
 </head>
 <body>
 
-    <h2>Local Network Stream Portal</h2>
-
-    <div id="login-section" class="controls">
-        <input type="password" id="room-pass" placeholder="Enter Room Password">
-        <button onclick="enterRoom()">Enter Room</button>
+<div class="container">
+    <h2>Secure Local Stream</h2>
+    
+    <div class="step">
+        <strong>1. Choose Source:</strong><br>
+        <button onclick="startSource('cam')">Use Camera</button>
+        <button onclick="document.getElementById('fileInput').click()">Loop Video File</button>
+        <input type="file" id="fileInput" accept="video/*" style="display:none" onchange="startSource('file')">
     </div>
 
-    <div id="stream-section" class="hidden">
-        <p>Room: <span id="room-display"></span></p>
-        <video id="mainVideo" autoplay playsinline></video>
+    <video id="v" autoplay playsinline controls></video>
+
+    <div class="step">
+        <strong>2. Create Connection:</strong><br>
+        <button onclick="createOffer()">I am Starting the Stream</button>
+        <button onclick="createAnswer()">I am Joining the Stream</button>
+    </div>
+
+    <div id="handshake">
+        <p>Copy this code to your friend:</p>
+        <textarea id="localSdp" readonly placeholder="Your code will appear here..."></textarea>
         
-        <div class="controls">
-            <h3>Broadcast Controls</h3>
-            <button onclick="startCamera()">Use My Camera</button>
-            <input type="file" id="fileInput" accept="video/*" style="display:none" onchange="startFile(this)">
-            <button onclick="document.getElementById('fileInput').click()">Upload/Loop Video</button>
-        </div>
+        <p>Paste your friend's code here:</p>
+        <textarea id="remoteSdp" placeholder="Paste their code here..."></textarea>
+        <br>
+        <button onclick="connect()">Connect & Start Video</button>
     </div>
+</div>
 
-    <script>
-        let localStream;
-        const videoElement = document.getElementById('mainVideo');
+<script>
+let pc = new RTCPeerConnection({ iceServers: [] }); // Local only, no external servers
+let localStream;
 
-        function enterRoom() {
-            const pass = document.getElementById('room-pass').value;
-            if(!pass) return alert("Enter a password!");
-            
-            document.getElementById('room-display').innerText = pass;
-            document.getElementById('login-section').classList.add('hidden');
-            document.getElementById('stream-section').classList.remove('hidden');
-            
-            // In a real app, this 'pass' would connect to a signaling server.
-            // Since your network blocks them, this UI prepares the hooks for P2P.
-            console.log("Joined Room: " + pass);
-        }
+// Setup video source
+async function startSource(type) {
+    if (type === 'cam') {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById('v').srcObject = localStream;
+    } else {
+        const file = document.getElementById('fileInput').files[0];
+        document.getElementById('v').srcObject = null;
+        document.getElementById('v').src = URL.createObjectURL(file);
+        document.getElementById('v').loop = true;
+        localStream = document.getElementById('v').captureStream();
+    }
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+}
 
-        async function startCamera() {
-            if (localStream) localStream.getTracks().forEach(track => track.stop());
-            
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                videoElement.srcObject = localStream;
-                videoElement.loop = false;
-            } catch (err) {
-                alert("Camera access denied or not found.");
-            }
-        }
+// Receive video
+pc.ontrack = (e) => { document.getElementById('v').srcObject = e.streams[0]; };
 
-        function startFile(input) {
-            if (localStream) localStream.getTracks().forEach(track => track.stop());
-            
-            const file = input.files[0];
-            const url = URL.createObjectURL(file);
-            
-            videoElement.srcObject = null;
-            videoElement.src = url;
-            videoElement.loop = true;
-            videoElement.play();
-        }
-    </script>
+async function createOffer() {
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    // Wait for ICE gathering
+    setTimeout(() => { document.getElementById('localSdp').value = btoa(JSON.stringify(pc.localDescription)); }, 500);
+}
+
+async function createAnswer() {
+    const remoteData = JSON.parse(atob(document.getElementById('remoteSdp').value));
+    await pc.setRemoteDescription(new RTCSessionDescription(remoteData));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    setTimeout(() => { document.getElementById('localSdp').value = btoa(JSON.stringify(pc.localDescription)); }, 500);
+}
+
+async function connect() {
+    const remoteData = JSON.parse(atob(document.getElementById('remoteSdp').value));
+    if (!pc.currentRemoteDescription) {
+        await pc.setRemoteDescription(new RTCSessionDescription(remoteData));
+    }
+}
+</script>
 </body>
 </html>
